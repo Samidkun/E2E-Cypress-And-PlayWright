@@ -18,7 +18,7 @@ test.describe('Level CRUD - Create Level', () => {
 
     await page.getByRole('button', { name: /Tambah Level/i }).click(); // Klik tombol Tambah Level
 
-    const levelName = 'Mahasiswa'; // Input Data
+    const levelName = 'Direktur'; // Input Data
     const levelCode = levelName.replace(/\s+/g, '').substring(0, 3).toUpperCase();
 
     console.log(`Generated code: ${levelCode}`);
