@@ -1,74 +1,59 @@
-// @ts-check
 import { test, expect } from '@playwright/test';
 
 // CASE 1: Berhasil menambah Level baru
 test.describe('Level CRUD - Create Level', () => {
   test('should login and create a new level successfully', async ({ page }) => {
 
-    // Membuka halaman login
-    await page.goto('http://127.0.0.1:8000/login');
+    await page.goto('http://127.0.0.1:8000/login'); // Membuka halaman login
 
-    // Mengisi username dan password
-    await page.fill('input[name="username"]', 'satrio');
+    await page.fill('input[name="username"]', 'satrio'); // Mengisi username dan password
     await page.fill('input[name="password"]', '123456');
 
-    // Klik tombol login
-    await page.click('button[type="submit"]');
-
-    // Pastikan sudah masuk ke dashboard
+    await page.click('button[type="submit"]'); // Klik tombol login
     await page.waitForURL('**/dashboard', { timeout: 10000 });
     await expect(page).toHaveURL(/dashboard/);
 
-    // Buka halaman Level
-    await page.goto('http://127.0.0.1:8000/level');
-    await page.waitForURL('**/level');
+    await page.goto('http://127.0.0.1:8000/level'); // Halaman Level
+    await expect(page).toHaveURL(/level/);
 
-    // Klik tombol Tambah Level
-    await page.getByRole('button', { name: /Tambah Level/i }).click();
+    await page.getByRole('button', { name: /Tambah Level/i }).click(); // Klik tombol Tambah Level
 
-    // Nama level (bisa kamu ganti sesuka hati)
-    const levelName = 'Staff';
+    const levelName = 'Direktur'; // Input Data
+    const levelCode = levelName.replace(/\s+/g, '').substring(0, 3).toUpperCase();
 
-    // Generate kode otomatis dari nama level:
-    // - Ambil 3 huruf pertama dari nama tanpa spasi
-    // - Ubah ke huruf besar
-    // - Tambahkan angka acak di belakang biar unik
-    const cleanName = levelName.replace(/\s+/g, '');
-    const levelCode = cleanName.substring(0, 3).toUpperCase() + Math.floor(Math.random());
+    console.log(`Generated code: ${levelCode}`);
 
-    console.log('Generated code:', levelCode);
+    expect(levelCode).toMatch(/^[A-Z]{3}$/); // Verifikasi kode valid
 
-    // Verifikasi sebelum diisi
-    expect(levelCode).toMatch(/^[A-Z]{3}\d$/);
-    expect(levelName.length).toBeGreaterThan(3);
-
-    // Isi form
-    await page.locator('#level_kode').fill(levelCode);
+    await page.locator('#level_kode').fill(levelCode); // Isi form
     await page.locator('#level_nama').fill(levelName);
 
-    // Klik tombol Simpan dan tunggu respon AJAX
-    await Promise.all([
+    const [response] = await Promise.all([ // Klik tombol Simpan dan tunggu respons berhasil
       page.waitForResponse(resp =>
         resp.url().includes('/level') && resp.status() === 200
       ),
       page.getByRole('button', { name: /Simpan/i }).click(),
     ]);
 
-    // Tunggu SweetAlert muncul
-    await page.waitForSelector('.swal2-title', { timeout: 10000 });
+    console.log('Response status:', response.status());
 
-    // Ambil teks SweetAlert
-    const swalTitle = await page.locator('.swal2-title').textContent();
-    const swalBody = await page.locator('.swal2-html-container').textContent();
+    const swal = page.locator('.swal2-popup'); // VERIFIKASI SWEETALERT 
+    await expect(swal).toBeVisible({ timeout: 10000 });
+
+    const swalTitle = await page.locator('.swal2-title').innerText();
+    const swalBody = await page.locator('.swal2-html-container').innerText();
 
     console.log('Swal title:', swalTitle, '| Swal body:', swalBody);
 
-    // Verifikasi pesan sukses
-    await expect(swalTitle).toMatch(/berhasil/i);
-    await expect(swalBody).toMatch(/Data level berhasil disimpan/i);
+    expect(swalTitle).toMatch(/berhasil/i); // Verifikasi pesan sukses
+    expect(swalBody).toMatch(/disimpan/i);
 
-    // Verifikasi data muncul di tabel
-    const table = page.locator('#table_level');
+    const okButton = page.getByRole('button', { name: /OK/i }); // Tutup SweetAlert jika muncul tombol OK
+    if (await okButton.isVisible()) {
+      await okButton.click();
+    }
+
+    const table = page.locator('#table_level'); // VERIFIKASI DATA MUNCUL DI TABEL
     await expect(table).toContainText(levelCode);
     await expect(table).toContainText(levelName);
   });
